@@ -1,11 +1,11 @@
-﻿using Telegram.Bot.Types;
+﻿using NLog;
 using Telegram.Bot;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using Timer = System.Timers.Timer;
-using NLog;
-using WorkBot.Storage;
 using WorkBot.Settings;
+using WorkBot.Storage;
+using Timer = System.Timers.Timer;
 
 namespace WorkBot;
 
@@ -15,7 +15,7 @@ public class Bot
     /// Протоколирование
     /// </summary>
     private static readonly NLog.Logger log = NLog.LogManager.GetCurrentClassLogger();
-
+    public string photo {  get; set;}
     /// <summary>
     /// Клиент Telegram
     /// </summary>
@@ -34,7 +34,6 @@ public class Bot
         { "profile", ProfileCommand },
         { "forget", ForgetCommand }
     };
-
     /// <summary>
     /// Конструктор бота
     /// </summary>
@@ -47,6 +46,8 @@ public class Bot
         client = new TelegramBotClient(token, httpClient);
         client.OnMessage += Client_OnMessage;
     }
+    
+
     /// <summary>
     /// Тик таймера
     /// </summary>
@@ -118,7 +119,9 @@ public class Bot
                 case UpdateType.Message:
                     ProcessMessage(message);
                     break;
-
+                case UpdateType.CallbackQuery:
+                    
+                    break;
                 default:
                     SendText(message.Chat.Id, $"Не поддерживается сообщение типа {type}", LogLevel.Warn);
                     break;
@@ -204,8 +207,6 @@ public class Bot
             case Enums.State.Register:
                 RegisterText(message, db, user);
                 break;
-            case Enums.State.Download:
-                break;
             default:
                 SendText(message.Chat.Id, $"Вы прислали мне {message.Text}");
             break;
@@ -262,9 +263,22 @@ public class Bot
         }
     }
 
-    private static void StartCommand(Message message)
+    private static async void StartCommand(Message message)
     {
-        SendText(message.Chat.Id, $"Здравствуйте, {message.Chat.Username}");
+        var stream = File.OpenRead("./Resource/Меню.png");
+        var keyboard = new InlineKeyboardMarkup(new[]
+                {
+                    new[] { InlineKeyboardButton.WithCallbackData("✅ Сделать заказ", "order") },
+                    new[] { InlineKeyboardButton.WithCallbackData("💬 Отзывы", "reviews") },
+                    new[] { InlineKeyboardButton.WithCallbackData("📸 Примеры", "examples") },
+                    new[] { InlineKeyboardButton.WithCallbackData("❓ FAQ", "faq") }
+                });
+        
+        await client.SendPhoto(
+                    chatId: message.Chat.Id,
+                    photo : InputFileStream.FromStream(stream),
+                    replyMarkup: keyboard
+        );        
     }
     private static void RegisterCommand(Message message)
     {
@@ -327,6 +341,5 @@ public class Bot
         db.SaveChanges();
         SendText(message.Chat.Id, "Регистрация удалена");
     }
-    
 
 }
