@@ -16,12 +16,8 @@ namespace WorkBot.Enums
         /// </summary>
         Basic,
         /// <summary>
-        /// Регистрация
+        /// Заказ
         /// </summary>
-        Register,
-        /// <summary>
-        /// Запрос прогноза погоды
-        /// </summary>
-        Download,
+        Order,
     }
 }

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using WorkBot.Settings;
+﻿using WorkBot.Settings;
 using Microsoft.EntityFrameworkCore;
 
 namespace WorkBot.Storage
@@ -31,6 +26,10 @@ namespace WorkBot.Storage
         /// Пользователи
         /// </summary>
         public virtual DbSet<BotUser> Users { get; set; }  
+        /// <summary>
+        /// Заказы
+        /// </summary>
+        public virtual DbSet<MessageLog> MessageLogs { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

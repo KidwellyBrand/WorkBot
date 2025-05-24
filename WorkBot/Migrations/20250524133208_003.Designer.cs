@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WorkBot.Storage;
 
@@ -10,9 +11,11 @@ using WorkBot.Storage;
 namespace WorkBot.Migrations
 {
     [DbContext(typeof(DB))]
-    partial class DBModelSnapshot : ModelSnapshot
+    [Migration("20250524133208_003")]
+    partial class _003
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.5");
@@ -32,9 +35,6 @@ namespace WorkBot.Migrations
                     b.Property<string>("LastName")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("OrderType")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("State")
                         .HasColumnType("INTEGER");
 
@@ -51,9 +51,9 @@ namespace WorkBot.Migrations
 
             modelBuilder.Entity("WorkBot.Storage.MessageLog", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("INTEGER");
 
                     b.Property<long>("ChatId")
                         .HasColumnType("INTEGER");

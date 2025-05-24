@@ -5,6 +5,7 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using WorkBot.Settings;
 using WorkBot.Storage;
+using WorkBot.Models;
 using Timer = System.Timers.Timer;
 
 namespace WorkBot;
@@ -15,7 +16,6 @@ public class Bot
     /// Протоколирование
     /// </summary>
     private static readonly NLog.Logger log = NLog.LogManager.GetCurrentClassLogger();
-    public string photo {  get; set;}
     /// <summary>
     /// Клиент Telegram
     /// </summary>
@@ -29,10 +29,7 @@ public class Bot
     private delegate void CommandDelegate(Message message);
     private static readonly Dictionary<string, CommandDelegate> commands = new()
     {
-        { "start", StartCommand },
-        { "register", RegisterCommand },
-        { "profile", ProfileCommand },
-        { "forget", ForgetCommand }
+        { "start", StartCommand},
     };
     /// <summary>
     /// Конструктор бота
@@ -40,14 +37,16 @@ public class Bot
     /// <param name="token">Токен доступа</param>
     public Bot(string token)
     {
+        int delay = Config.Get<int>("Timeout", 60);
+        DateTime limit = DateTime.UtcNow.AddSeconds(-delay);
+        DateTime minValid = DateTime.UtcNow.AddHours(-1); // чтобы не реагировать на default
+        
         timer = new Timer(1000); // интервал срабатывания - 1 секунда
         timer.Elapsed += Timer_Elapsed;
         HttpClient httpClient = new();
         client = new TelegramBotClient(token, httpClient);
-        client.OnMessage += Client_OnMessage;
+        client.OnUpdate += Client_OnUpdate;
     }
-    
-
     /// <summary>
     /// Тик таймера
     /// </summary>
@@ -62,7 +61,7 @@ public class Bot
         using var db = new DB();
         foreach (var user in db.Users
                  .Where(x => x.TimeStamp < limit && x.TimeStamp > minValid &&
-                             (x.State == Enums.State.Download || x.State == Enums.State.Register))
+                             (x.State == Enums.State.Order ))
                  .ToList())
         {
             SendText(user.ID, $"Вы про меня забыли");
@@ -108,31 +107,110 @@ public class Bot
     /// Обработка входящих сообщений разных типов
     /// </summary>
     /// <param name="message"></param>
-    /// <param name="type"></param>
+    /// <param name="update"></param>
     /// <returns></returns>
-    private Task Client_OnMessage(Message message, UpdateType type)
+    private async Task Client_OnUpdate( Update update)
     {
         try
         {
-            switch (type)
+            switch (update.Type)
             {
                 case UpdateType.Message:
-                    ProcessMessage(message);
+                    if (update.Message != null)
+                        ProcessMessage(update.Message);
                     break;
+
                 case UpdateType.CallbackQuery:
-                    
+                    if (update.CallbackQuery != null)
+                        await ProcessCallbackQuery(update.CallbackQuery);
                     break;
+
                 default:
-                    SendText(message.Chat.Id, $"Не поддерживается сообщение типа {type}", LogLevel.Warn);
+                    if (update.Message != null)
+                        SendText(update.Message.Chat.Id, $"Не поддерживается сообщение типа {update.Type}", LogLevel.Warn);
                     break;
             }
         }
         catch (Exception ex)
         {
-            SendText(message.Chat.Id, $"Внутренняя ошибка: {ex.Message}", LogLevel.Warn);
+            if (update.Message != null)
+                SendText(update.Message.Chat.Id, $"Внутренняя ошибка: {ex.Message}", LogLevel.Warn);
         }
-        return Task.CompletedTask;
     }
+
+    private async Task ProcessCallbackQuery(CallbackQuery callbackQuery)
+    {
+        await client.AnswerCallbackQuery(callbackQuery.Id);
+        using var db = new DB();
+        BotUser? user = db.Users.Find(callbackQuery.Message.Chat.Id);
+        if (user != null)
+        {
+            // Обновляем время активности пользователя, чтобы таймер "забыл"
+            user.TimeStamp = DateTime.UtcNow;
+            db.SaveChanges();
+        }
+
+        switch (callbackQuery.Data)
+        {
+            case "order":
+                user.State = Enums.State.Order;
+                var buttonData = new Dictionary<string, string>
+                {
+                    { "🪧Описание для карточки товара", "description" },
+                    { "📄Перевод текста с сохранением стиля", "translate" },
+                    { "🛍Описание для продажи товара", "descorder" },
+                    { "📚Поздравления и стихи на заказ","poems" },
+                    {"📇Резюме","resume" }
+                };
+
+                var keyboard = MyCallbackQuery.CreateKeyboard(buttonData);
+               
+
+                await client.SendMessage(
+                    chatId: callbackQuery.Message.Chat.Id,
+                    text: "Выберите интересующий вас вариант",
+                    replyMarkup: keyboard
+                );
+               
+                break;
+            case "description":
+            case "translate":
+            case "descorder":
+            case "poems":
+            case "resume":
+                user.State = Enums.State.Order;
+                user.OrderType = callbackQuery.Data; // Сохраняем подтип заказа
+                db.SaveChanges();
+                await client.SendMessage(
+                    chatId: callbackQuery.Message.Chat.Id,
+                    text: "Введите текст для обработки:"
+                );
+                await RemoveButtonInline.RemoveButtonInAsync(client,callbackQuery, callbackQuery.Message.Chat.Id);
+                break;
+            case "faq":
+                await client.SendMessage(callbackQuery.Message.Chat.Id, "Вот ответы на частые вопросы...");
+                await RemoveButtonInline.RemoveButtonInAsync(client, callbackQuery, callbackQuery.Message.Chat.Id);
+                break;
+            case "reviews":
+                var buttonUrl = new Dictionary<string, string>
+                {
+                    { "Перейти к отзывам", "https://t.me/+78nH4Y-sV3ZkN2Uy" }
+                };
+                var keyboardUrl = MyCallbackQuery.CreateKeyboardUrl(buttonUrl);
+                await client.SendMessage(
+                    chatId: callbackQuery.Message.Chat.Id,
+                    text: "Нажмите кнопку ниже, чтобы перейти к отзывам:",
+                    replyMarkup: keyboardUrl);
+                await RemoveButtonInline.RemoveButtonInAsync(client, callbackQuery, callbackQuery.Message.Chat.Id);
+                break;
+            default:
+                await client.SendMessage(callbackQuery.Message.Chat.Id, "Неизвестная команда.");
+                break;
+        }
+    }
+
+
+
     /// <summary>
     /// Обработка входящих сообщений
     /// </summary>
@@ -189,10 +267,17 @@ public class Bot
 
         using var db = new DB();
         BotUser? user = db.Users.Find(message.Chat.Id);
-        user ??= new BotUser()
-            {
-                ID = message.Chat.Id
+        if (user == null)
+        {
+            user = new BotUser() 
+            { 
+                ID = message.Chat.Id, 
+                UserName = message.Chat.Username,
+                FirstName = message.Chat.FirstName
             };
+            db.Users.Add(user);  // Добавляем только для нового пользователя
+        }
+        db.SaveChanges();
         // Обработка текста "Отмена" как универсального действия
         // вне зависимости от состояния
         if (message.Text == Text.Cancel)
@@ -204,34 +289,41 @@ public class Bot
         }
         switch (user.State)
         {
-            case Enums.State.Register:
-                RegisterText(message, db, user);
+            case Enums.State.Order:
+                OrderText(message, db, user);
                 break;
             default:
                 SendText(message.Chat.Id, $"Вы прислали мне {message.Text}");
             break;
-  
         }
-
     }
 
-    private void RegisterText(Message message, DB db, BotUser user)
+    private void OrderText(Message message, DB db, BotUser user)
     {
-        switch (message.Text)
+        switch (user.OrderType)
         {
-            case Text.Register:
-                user.UserName = message.Chat.Username;
-                user.FirstName = message.Chat.FirstName;
-                user.LastName = message.Chat.LastName;
-                user.IsRegistred = true;
-                user.State = Enums.State.Basic;
+            case "description":
+            case "translate":
+            case "descorder":
+                MessageLog messageLog = new()
+                {
+                    Username = message.Chat.Username,
+                    ChatId = message.Chat.Id,
+                    Date = DateTime.Now,
+                    Text = message.Text!,
+                };
+                db.MessageLogs.Add(messageLog);
                 db.SaveChanges();
-                SendText(message.Chat.Id, $"Вы зарегистрированы");
+                SendText(message.Chat.Id, $"Ваш заказ принят");
                 break;
             default:
-                SendText(message.Chat.Id, $"Вы зачем-то прислали мне это: {message.Text}");
+                SendText(message.Chat.Id, "Неизвестный тип заказа. Пожалуйста, начните заново.");
                 break;
         }
+
+        user.State = Enums.State.Basic;
+        user.OrderType = null;
+        db.SaveChanges();
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051", Justification = "Метод вызывается через рефлексию")]
@@ -266,80 +358,19 @@ public class Bot
     private static async void StartCommand(Message message)
     {
         var stream = File.OpenRead("./Resource/Меню.png");
-        var keyboard = new InlineKeyboardMarkup(new[]
-                {
-                    new[] { InlineKeyboardButton.WithCallbackData("✅ Сделать заказ", "order") },
-                    new[] { InlineKeyboardButton.WithCallbackData("💬 Отзывы", "reviews") },
-                    new[] { InlineKeyboardButton.WithCallbackData("📸 Примеры", "examples") },
-                    new[] { InlineKeyboardButton.WithCallbackData("❓ FAQ", "faq") }
-                });
-        
-        await client.SendPhoto(
-                    chatId: message.Chat.Id,
-                    photo : InputFileStream.FromStream(stream),
-                    replyMarkup: keyboard
-        );        
-    }
-    private static void RegisterCommand(Message message)
-    {
-        using var db= new DB();
-        BotUser? user = db.Users.Find(message.Chat.Id);
-        if (user == null)
+        var buttonData = new Dictionary<string, string>
         {
-            user = new BotUser()
-            {
-                ID = message.Chat.Id,
-                State = Enums.State.Register
-            };
-            db.Users.Add(user);
-        }
-        else
-        {
-            user.State = Enums.State.Register;
-        }
-        db.SaveChanges();
-        // Клавиатура из 3-х кнопок
-        var keyboard = new KeyboardButton[]
-        {
-            new(Text.Register),
-            new (Text.Cancel)
+            { "✅ Заказ", "order" },
+            { "🌟 Отзывы", "reviews" },
+            { "📸 Примеры", "examples" },
+            { "❓ FAQ", "faq" }
         };
-        //Клавиатурная разметка
-        var markup = new ReplyKeyboardMarkup(keyboard)
-        {
-            ResizeKeyboard = true
-        };
-        client.SendMessage(message.Chat.Id, $"Прошу вас зарегистрироваться", replyMarkup: markup);
 
-    }
-    private static void ProfileCommand(Message message)
-    {
-        using var db = new DB(true);
-        db.EnableLogging = true;
-        
-        BotUser? user = db.Users.Find(message.Chat.Id);
-        if (user == null || !user.IsRegistred)
-        {
-            SendText(message.Chat.Id, "Вы не зарегистрированы");
-            return;
-        }
+        var keyboard = MyCallbackQuery.CreateKeyboard(buttonData);
 
-        string s;
-        s = $"@{user.UserName} {user.FirstName} {user.LastName}, вы зарегистрированы";
-        SendText(message.Chat.Id, s);
-    }
-    private static void ForgetCommand(Message message)
-    {
-        using var db = new DB();
-        BotUser? user = db.Users.Find(message.Chat.Id);
-        if (user == null || !user.IsRegistred)
-        {
-            SendText(message.Chat.Id, "Вы не зарегистрированы");
-            return;
-        }
-        db.Users.Remove(user);
-        db.SaveChanges();
-        SendText(message.Chat.Id, "Регистрация удалена");
+        await client.SendPhoto(chatId: message.Chat.Id,
+                               photo: InputFile.FromStream(stream),
+                               replyMarkup: keyboard);        
     }
 
 }

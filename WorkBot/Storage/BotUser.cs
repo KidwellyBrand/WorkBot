@@ -31,6 +31,10 @@ namespace WorkBot.Storage
         /// Состояние пользователя
         /// </summary>
         public State State { get; set; }
+        /// <summary>
+        /// Сохраняет описание выбранной inline-кнопки
+        /// </summary>
+        public string? OrderType { get; set; }
 
         /// <summary>
         /// Признак зарегистрированного пользователя
