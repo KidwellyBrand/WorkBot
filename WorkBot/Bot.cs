@@ -319,7 +319,7 @@ public class Bot
                 SendText(message.Chat.Id, $"Ваш заказ принят");
                 break;
             default:
-                SendText(message.Chat.Id, "Неизвестный тип заказа. Пожалуйста, начните заново.");
+                SendText(message.Chat.Id, "Неизвестный тип заказа. Пожалуйста, начните заново.", LogLevel.Warn);
                 break;
         }
 
