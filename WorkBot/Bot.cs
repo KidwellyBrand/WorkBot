@@ -305,6 +305,8 @@ public class Bot
             case "description":
             case "translate":
             case "descorder":
+            case "poems":
+            case "resume":
                 MessageLog messageLog = new()
                 {
                     Username = message.Chat.Username,
