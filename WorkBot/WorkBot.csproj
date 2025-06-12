@@ -6,7 +6,52 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+	
 
+    <ItemGroup>
+			<PackageReference Include="Packaging.Targets">
+			<Version>0.1.232.*</Version>
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+	</ItemGroup>
+	<PropertyGroup>
+		<Prefix>/usr/share/work/bot/</Prefix>
+		<PreInstallScript>
+			<![CDATA[
+echo "WorkBot: Остановка сервиса"
+sudo systemctl stop WorkBot || true
+echo "WorkBot: Подготовка завершена"]]>
+		</PreInstallScript>
+		<PostInstallScript>
+			<![CDATA[
+echo "WorkBot: Установка сервиса"
+sudo systemctl enable /usr/share/work/bot/WorkBot.service || true
+echo "WorkBot: Запуск сервиса"
+sudo systemctl start WorkBot || true
+echo "WorkBot: Настройка завершена"
+]]>
+		</PostInstallScript>
+		<PreRemoveScript>
+			<![CDATA[
+echo "WorkBot: Остановка сервиса"
+sudo systemctl stop WorkBot || true
+echo "WorkBot: Удаление сервиса"
+sudo systemctl disable WorkBot || true]]>
+		</PreRemoveScript>
+		<PostRemoveScript>
+			<![CDATA[
+echo "WorkBot: Удаление завершено"]]>
+		</PostRemoveScript>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Content Include="nlog.config">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+	</ItemGroup>
+	
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="9.0.6" />
@@ -24,10 +69,6 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.6" />
     <PackageReference Include="NLog" Version="5.5.0" />
     <PackageReference Include="NLog.Extensions.Logging" Version="5.5.0" />
-    <PackageReference Include="Packaging.Targets" Version="0.1.232">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="Telegram.Bot" Version="22.5.1" />
   </ItemGroup>
 
@@ -42,6 +83,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="commands.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="install.sh">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="nlog.config">
