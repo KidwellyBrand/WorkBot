@@ -3,9 +3,9 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using WorkBot.Models;
 using WorkBot.Settings;
 using WorkBot.Storage;
-using WorkBot.Models;
 using Timer = System.Timers.Timer;
 
 namespace WorkBot;
@@ -40,7 +40,7 @@ public class Bot
         int delay = Config.Get<int>("Timeout", 60);
         DateTime limit = DateTime.UtcNow.AddSeconds(-delay);
         DateTime minValid = DateTime.UtcNow.AddHours(-1); // чтобы не реагировать на default
-        
+
         timer = new Timer(1000); // интервал срабатывания - 1 секунда
         timer.Elapsed += Timer_Elapsed;
         HttpClient httpClient = new();
@@ -61,7 +61,7 @@ public class Bot
         using var db = new DB();
         foreach (var user in db.Users
                  .Where(x => x.TimeStamp < limit && x.TimeStamp > minValid &&
-                             (x.State == Enums.State.Order ))
+                             (x.State == Enums.State.Order))
                  .ToList())
         {
             SendText(user.ID, $"Вы про меня забыли");
@@ -109,7 +109,7 @@ public class Bot
     /// <param name="message"></param>
     /// <param name="update"></param>
     /// <returns></returns>
-    private async Task Client_OnUpdate( Update update)
+    private async Task Client_OnUpdate(Update update)
     {
         try
         {
@@ -149,7 +149,18 @@ public class Bot
             user.TimeStamp = DateTime.UtcNow;
             db.SaveChanges();
         }
-
+        else 
+        {
+            user = new BotUser()
+            {
+                ID = callbackQuery.Message.Chat.Id,
+                UserName = callbackQuery.Message.Chat.Username,
+                FirstName = callbackQuery.Message.Chat.FirstName,
+                TimeStamp = DateTime.UtcNow,
+            };
+            db.Users.Add(user);
+            db.SaveChanges();
+        }
         switch (callbackQuery.Data)
         {
             case "order":
@@ -164,14 +175,14 @@ public class Bot
                 };
 
                 var keyboard = MyCallbackQuery.CreateKeyboard(buttonData);
-               
+
 
                 await client.SendMessage(
                     chatId: callbackQuery.Message.Chat.Id,
                     text: "Выберите интересующий вас вариант",
                     replyMarkup: keyboard
                 );
-               
+
                 break;
             case "description":
             case "translate":
@@ -185,7 +196,7 @@ public class Bot
                     chatId: callbackQuery.Message.Chat.Id,
                     text: "Введите текст для обработки:"
                 );
-                await RemoveButtonInline.RemoveButtonInAsync(client,callbackQuery, callbackQuery.Message.Chat.Id);
+                await RemoveButtonInline.RemoveButtonInAsync(client, callbackQuery, callbackQuery.Message.Chat.Id);
                 break;
             case "faq":
                 await client.SendMessage(callbackQuery.Message.Chat.Id, "Вот ответы на частые вопросы...");
@@ -269,9 +280,9 @@ public class Bot
         BotUser? user = db.Users.Find(message.Chat.Id);
         if (user == null)
         {
-            user = new BotUser() 
-            { 
-                ID = message.Chat.Id, 
+            user = new BotUser()
+            {
+                ID = message.Chat.Id,
                 UserName = message.Chat.Username,
                 FirstName = message.Chat.FirstName
             };
@@ -294,7 +305,7 @@ public class Bot
                 break;
             default:
                 SendText(message.Chat.Id, $"Вы прислали мне {message.Text}");
-            break;
+                break;
         }
     }
 
@@ -372,7 +383,7 @@ public class Bot
 
         await client.SendPhoto(chatId: message.Chat.Id,
                                photo: InputFile.FromStream(stream),
-                               replyMarkup: keyboard);        
+                               replyMarkup: keyboard);
     }
 
 }

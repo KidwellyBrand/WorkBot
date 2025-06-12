@@ -1,10 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using NLog.Extensions.Logging;
 using WorkBot;
 using WorkBot.Settings;
 using WorkBot.Storage;
+using NLog.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 
 NLog.Logger log = NLog.LogManager.GetCurrentClassLogger();
 
@@ -36,7 +36,7 @@ bot.Start();
 IHostBuilder builder = Host.CreateDefaultBuilder(args).UseWindowsService();
 
 // Настройка протоколирования на NLog
-builder.ConfigureLogging(options =>
+builder.ConfigureLogging( options =>
 {
     options.ClearProviders();
     options.AddNLog();

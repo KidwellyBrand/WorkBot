@@ -1,5 +1,5 @@
-﻿using WorkBot.Settings;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using WorkBot.Settings;
 
 namespace WorkBot.Storage
 {
@@ -25,7 +25,7 @@ namespace WorkBot.Storage
         /// <summary>
         /// Пользователи
         /// </summary>
-        public virtual DbSet<BotUser> Users { get; set; }  
+        public virtual DbSet<BotUser> Users { get; set; }
         /// <summary>
         /// Заказы
         /// </summary>
