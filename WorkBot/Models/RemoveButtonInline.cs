@@ -7,11 +7,10 @@ namespace WorkBot.Models
     {
         public static async Task RemoveButtonInAsync(ITelegramBotClient botClient, CallbackQuery callback, long id)
         {
-            await botClient.EditMessageReplyMarkup(
-               chatId: id,
-               messageId: callback.Message.MessageId,
-               replyMarkup: null // удаляет inline-кнопки
-               );
+            await botClient.DeleteMessage(
+            chatId: id,
+            messageId: callback.Message.MessageId
+        );
         }
     }
 }

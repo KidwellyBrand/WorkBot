@@ -6,6 +6,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 using WorkBot.Models;
 using WorkBot.Settings;
 using WorkBot.Storage;
+using static System.Net.WebRequestMethods;
 using Timer = System.Timers.Timer;
 
 namespace WorkBot;
@@ -30,6 +31,7 @@ public class Bot
     private static readonly Dictionary<string, CommandDelegate> commands = new()
     {
         { "start", StartCommand},
+        { "menu",MenuCommand}
     };
     /// <summary>
     /// Конструктор бота
@@ -176,12 +178,12 @@ public class Bot
 
                 var keyboard = MyCallbackQuery.CreateKeyboard(buttonData);
 
-
                 await client.SendMessage(
                     chatId: callbackQuery.Message.Chat.Id,
-                    text: "Выберите интересующий вас вариант",
+                    text: "Выберите интересующий вас вариант:",
                     replyMarkup: keyboard
                 );
+                await RemoveButtonInline.RemoveButtonInAsync(client, callbackQuery, callbackQuery.Message.Chat.Id);
 
                 break;
             case "description":
@@ -192,10 +194,7 @@ public class Bot
                 user.State = Enums.State.Order;
                 user.OrderType = callbackQuery.Data; // Сохраняем подтип заказа
                 db.SaveChanges();
-                await client.SendMessage(
-                    chatId: callbackQuery.Message.Chat.Id,
-                    text: "Введите текст для обработки:"
-                );
+                await client.SendMessage(callbackQuery.Message.Chat.Id, "Введите текст для обработки:");
                 await RemoveButtonInline.RemoveButtonInAsync(client, callbackQuery, callbackQuery.Message.Chat.Id);
                 break;
             case "faq":
@@ -205,8 +204,9 @@ public class Bot
             case "reviews":
                 var buttonUrl = new Dictionary<string, string>
                 {
-                    { "Перейти к отзывам", "https://t.me/+78nH4Y-sV3ZkN2Uy" }
-                };
+                    { "Перейти к отзывам", "https://t.me/+78nH4Y-sV3ZkN2Uy" },
+                }
+        ;
                 var keyboardUrl = MyCallbackQuery.CreateKeyboardUrl(buttonUrl);
                 await client.SendMessage(
                     chatId: callbackQuery.Message.Chat.Id,
@@ -214,13 +214,24 @@ public class Bot
                     replyMarkup: keyboardUrl);
                 await RemoveButtonInline.RemoveButtonInAsync(client, callbackQuery, callbackQuery.Message.Chat.Id);
                 break;
+            case "examples":
+                 buttonUrl = new Dictionary<string, string>
+                {
+                    { "Перейти к примерам", "https://t.me/+Yav5LWHXJk4zNDYy" }
+                };
+                keyboardUrl = MyCallbackQuery.CreateKeyboardUrl(buttonUrl);
+                await client.SendMessage(
+                    chatId: callbackQuery.Message.Chat.Id,
+                    text: "Нажмите кнопку ниже, чтобы перейти к примерам:",
+                    replyMarkup: keyboardUrl);
+                await RemoveButtonInline.RemoveButtonInAsync(client, callbackQuery, callbackQuery.Message.Chat.Id);
+                break;
+
             default:
                 await client.SendMessage(callbackQuery.Message.Chat.Id, "Неизвестная команда.");
                 break;
         }
     }
-
-
 
     /// <summary>
     /// Обработка входящих сообщений
@@ -370,20 +381,11 @@ public class Bot
 
     private static async void StartCommand(Message message)
     {
-        var stream = File.OpenRead("./Resource/Меню.png");
-        var buttonData = new Dictionary<string, string>
-        {
-            { "✅ Заказ", "order" },
-            { "🌟 Отзывы", "reviews" },
-            { "📸 Примеры", "examples" },
-            { "❓ FAQ", "faq" }
-        };
-
-        var keyboard = MyCallbackQuery.CreateKeyboard(buttonData);
-
-        await client.SendPhoto(chatId: message.Chat.Id,
-                               photo: InputFile.FromStream(stream),
-                               replyMarkup: keyboard);
+        Menu.SendMenu(client, message);
+    }
+    private static async void MenuCommand(Message message)
+    {
+        Menu.SendMenu(client, message);
     }
 
 }
