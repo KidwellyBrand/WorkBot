@@ -1,0 +1,13 @@
+﻿[Unit]
+Description=Work Bot
+
+[Service]
+WorkingDirectory=/usr/share/work/bot/
+ExecStart=/usr/bin/dotnet /usr/share/work/bot/WorkBot.dll
+Restart=always
+RestartSec=10
+SyslogIdentifier=WorkBot
+User=root
+
+[Install]
+WantedBy=multi-user.target

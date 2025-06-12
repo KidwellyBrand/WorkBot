@@ -94,6 +94,9 @@ echo "WorkBot: Удаление завершено"]]>
     <None Update="Resource\Меню.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="WorkBot.service">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
