@@ -1,0 +1,89 @@
+﻿@model WorkBot.Storage.BotUser?
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h2>Отправка сообщения пользователю Telegram</h2>
+
+<form asp-action="FindUser" method="post" class="form-inline mb-3">
+    <label for="userId" class="mr-2">Введите Telegram ID пользователя:</label>
+    <input type="number" name="userId" id="userId" class="form-control mr-2" required />
+    <button type="submit" class="btn btn-primary">Найти пользователя</button>
+</form>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger">@ViewBag.Error</div>
+}
+
+@if (Model != null)
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5>Пользователь найден:</h5>
+            <p><strong>ID:</strong> @Model.ID</p>
+            <p><strong>Username:</strong> @(Model.UserName ?? "(нет)")</p>
+            <p><strong>Имя:</strong> @Model.FirstName @Model.LastName</p>
+        </div>
+    </div>
+
+    <form asp-action="SendMessage" method="post">
+        <input type="hidden" name="userId" value="@Model.ID" />
+
+        <div class="form-group">
+            <label for="message">Текст сообщения:</label>
+            <textarea name="message" id="message" rows="4" class="form-control" required>@(ViewData["message"] ?? "")</textarea>
+        </div>
+
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="text-danger">
+                @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                {
+                    <p>@err.ErrorMessage</p>
+                }
+            </div>
+        }
+
+        @if (ViewBag.Success != null)
+        {
+            <div class="alert alert-success">@ViewBag.Success</div>
+        }
+
+        <button type="submit" class="btn btn-success mt-2">Отправить сообщение</button>
+    </form>
+}
+
+<hr />
+
+<h3>Последние сообщения</h3>
+
+@if (ViewBag.MessageLogs != null)
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ChatId</th>
+                <th>Username</th>
+                <th>Текст</th>
+                <th>Дата</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (WorkBot.Storage.MessageLog msg in ViewBag.MessageLogs)
+            {
+                <tr>
+                    <td>@msg.ChatId</td>
+                    <td>@(msg.Username ?? "(нет)")</td>
+                    <td>@msg.Text</td>
+                    <td>@msg.Date.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>Сообщений нет.</p>
+}

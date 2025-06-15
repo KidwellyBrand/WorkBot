@@ -7,4 +7,5 @@ public class MessageLog
     public string? Username { get; set; }
     public string Text { get; set; } = string.Empty;
     public DateTime Date { get; set; }
+    public  string OrderType { get; set; }
 }

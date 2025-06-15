@@ -11,14 +11,6 @@ public static class Config
     /// </summary>
     private static IConfigurationRoot config;
 
-    static Config()
-    {
-        // Имя файла конфигурации
-        string name = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
-        // Объект конфигурации
-        config = new ConfigurationBuilder().AddJsonFile(name, false).Build();
-    }
-
     /// <summary>
     /// Значение заданного строкового параметра конфигурации
     /// </summary>

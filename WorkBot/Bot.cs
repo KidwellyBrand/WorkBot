@@ -335,6 +335,7 @@ public class Bot
                     ChatId = message.Chat.Id,
                     Date = DateTime.Now,
                     Text = message.Text!,
+                    OrderType = user.OrderType,
                 };
                 db.MessageLogs.Add(messageLog);
                 db.SaveChanges();
